@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # visionguard-ai
 =======
 # VisionGuard AI — Warehouse Bio-Hazard Detection System
