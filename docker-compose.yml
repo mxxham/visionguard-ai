@@ -1,0 +1,54 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: visionguard-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: visionguard
+      POSTGRES_USER: visionguard
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U visionguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: visionguard-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://visionguard:secret@postgres:5432/visionguard
+      MODEL_PATH: app/ml/weights/best.pt
+      CONFIDENCE_THRESHOLD: "0.75"
+      DEDUP_WINDOW_SECONDS: "30"
+    volumes:
+      - ./backend/app/ml/weights:/app/app/ml/weights
+      - snapshots:/app/snapshots
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: visionguard-ui
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  snapshots:
