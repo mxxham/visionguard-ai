@@ -1,7 +1,7 @@
 
 # visionguard-ai
 
-# VisionGuard AI — Warehouse Bio-Hazard Detection System
+# VisionGuard AI — Warehouse Pest Detection System
 
 Full-stack real-time detection dashboard powered by **YOLOv8-nano**, **FastAPI**, **PostgreSQL 15**, **React 18 + Vite**, and **WebSockets**.
 
