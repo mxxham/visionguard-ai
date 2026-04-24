@@ -14,9 +14,7 @@ function LiveCameraFeed({ camera, latestDetection, onClick }) {
   const intervalRef = useRef(null)
   const hasAlert = !!latestDetection
   const sev = latestDetection?.severity
-  const bgColor = sev === 'critical' ? '#110a0a' : sev === 'moderate' ? '#0d0d08' : '#0d0f13'
 
-  // Poll for latest snapshot from this camera
   useEffect(() => {
     function fetchLatestFrame() {
       if (latestDetection?.frame_path) {
@@ -34,23 +32,26 @@ function LiveCameraFeed({ camera, latestDetection, onClick }) {
   const isOffline = camera.status === 'offline'
   const isError   = camera.status === 'error'
 
+  const borderColor = hasAlert ? SEV_COLOR[sev] : 'var(--border)'
+
   return (
     <div
       onClick={onClick}
       style={{
-        background: bgColor,
+        background: '#f1f4fb',
         aspectRatio: '16/9',
         position: 'relative',
         cursor: 'pointer',
         overflow: 'hidden',
-        transition: 'all 0.2s',
+        borderRadius: 8,
+        border: `2px solid ${borderColor}`,
+        transition: 'all 0.15s',
         animation: hasAlert && sev === 'critical' ? 'cam-alert 1.5s ease-in-out infinite' : 'none',
-        outline: hasAlert && sev !== 'critical' ? `2px solid ${SEV_COLOR[sev]}` : undefined,
+        boxShadow: hasAlert ? `0 0 0 3px ${SEV_COLOR[sev]}20` : 'var(--shadow)',
       }}
-      onMouseEnter={e => { if (!hasAlert) e.currentTarget.style.outline = '2px solid var(--accent)' }}
-      onMouseLeave={e => { if (!hasAlert) e.currentTarget.style.outline = 'none' }}
+      onMouseEnter={e => { if (!hasAlert) { e.currentTarget.style.border = '2px solid var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)' } }}
+      onMouseLeave={e => { if (!hasAlert) { e.currentTarget.style.border = `2px solid var(--border)`; e.currentTarget.style.boxShadow = 'var(--shadow)' } }}
     >
-      {/* Live snapshot or placeholder */}
       {imgSrc && !imgError ? (
         <img
           src={imgSrc}
@@ -59,58 +60,37 @@ function LiveCameraFeed({ camera, latestDetection, onClick }) {
           style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
         />
       ) : (
-        <>
-          {/* Shelf placeholder SVG */}
-          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-            viewBox="0 0 160 90" xmlns="http://www.w3.org/2000/svg">
-            <rect width="160" height="90" fill={bgColor} />
-            <rect x="0" y="28" width="160" height="3" fill="#1a1e25" />
-            <rect x="0" y="58" width="160" height="3" fill="#1a1e25" />
-            <rect x="10" y="31" width="12" height="27" fill="#13161b" />
-            <rect x="30" y="31" width="18" height="27" fill="#13161b" />
-            <rect x="56" y="31" width="14" height="27" fill="#13161b" />
-            <rect x="78" y="31" width="22" height="27" fill="#13161b" />
-            <rect x="110" y="31" width="16" height="27" fill="#13161b" />
-            <rect x="134" y="31" width="18" height="27" fill="#13161b" />
-            <rect x="0" y="61" width="160" height="29" fill="#111318" />
-            {isOnline && !hasAlert && (
-              <text x="80" y="80" textAnchor="middle" fill="#6b7380" fontSize="7" fontFamily="Space Mono">
-                {isError ? 'NO SIGNAL' : 'AWAITING DETECTION'}
-              </text>
-            )}
-          </svg>
-        </>
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+          viewBox="0 0 160 90" xmlns="http://www.w3.org/2000/svg">
+          <rect width="160" height="90" fill="#f1f4fb" />
+          <rect x="0" y="28" width="160" height="2" fill="#e2e6f0" />
+          <rect x="0" y="58" width="160" height="2" fill="#e2e6f0" />
+          <rect x="10" y="30" width="12" height="28" fill="#e8ebf4" rx="2" />
+          <rect x="30" y="30" width="18" height="28" fill="#e8ebf4" rx="2" />
+          <rect x="56" y="30" width="14" height="28" fill="#e8ebf4" rx="2" />
+          <rect x="78" y="30" width="22" height="28" fill="#e8ebf4" rx="2" />
+          <rect x="110" y="30" width="16" height="28" fill="#e8ebf4" rx="2" />
+          <rect x="134" y="30" width="18" height="28" fill="#e8ebf4" rx="2" />
+          {isOnline && !hasAlert && (
+            <text x="80" y="80" textAnchor="middle" fill="#94a3b8" fontSize="7" fontFamily="IBM Plex Mono">
+              {isError ? 'NO SIGNAL' : 'AWAITING DETECTION'}
+            </text>
+          )}
+        </svg>
       )}
 
-      {/* Scanline overlay */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Grid lines */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: 'linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px)',
-        backgroundSize: '20px 20px',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Detection bounding box overlay */}
       {latestDetection && (
         <div style={{
           position: 'absolute',
-          left: '30%', top: '35%', width: '38%', height: '42%',
+          left: '30%', top: '25%', width: '38%', height: '50%',
           border: `2px solid ${SEV_COLOR[sev]}`,
-          borderRadius: 3,
-          animation: sev === 'critical' ? 'fade-in 0.3s ease-out' : 'none',
+          borderRadius: 4,
         }}>
           <div style={{
             background: SEV_COLOR[sev],
-            color: sev === 'moderate' ? '#000' : '#fff',
-            fontSize: 8, fontFamily: 'var(--font-mono)',
-            fontWeight: 700, padding: '1px 4px',
+            color: '#fff',
+            fontSize: 9, fontFamily: 'var(--font-mono)',
+            fontWeight: 700, padding: '2px 5px', borderRadius: '2px 2px 0 0',
           }}>
             {latestDetection.label?.toUpperCase()} {Math.round(latestDetection.confidence * 100)}%
           </div>
@@ -119,22 +99,20 @@ function LiveCameraFeed({ camera, latestDetection, onClick }) {
 
       {/* Status badge */}
       <div style={{
-        position: 'absolute', top: 6, right: 6,
-        fontSize: 9, fontFamily: 'var(--font-mono)',
-        padding: '2px 6px', borderRadius: 3,
+        position: 'absolute', top: 7, right: 7,
+        fontSize: 10, fontFamily: 'var(--font-mono)',
+        padding: '3px 7px', borderRadius: 5,
         background: isOffline || isError
-          ? 'rgba(107,115,128,0.2)'
-          : hasAlert ? 'rgba(255,68,68,0.15)' : 'rgba(0,229,160,0.15)',
-        color: isOffline || isError
-          ? 'var(--muted)'
-          : hasAlert ? 'var(--critical)' : 'var(--accent)',
-        border: `1px solid ${isOffline || isError ? 'rgba(107,115,128,0.3)' : hasAlert ? 'rgba(255,68,68,0.4)' : 'rgba(0,229,160,0.3)'}`,
+          ? 'rgba(148,163,184,0.9)'
+          : hasAlert ? `${SEV_COLOR[sev]}cc` : 'rgba(5,150,105,0.9)',
+        color: '#fff',
         display: 'flex', alignItems: 'center', gap: 4,
+        fontWeight: 600,
       }}>
         {!isOffline && !isError && (
           <span style={{
             width: 5, height: 5, borderRadius: '50%',
-            background: hasAlert ? 'var(--critical)' : 'var(--accent)',
+            background: '#fff',
             display: 'inline-block',
             animation: 'pulse 2s ease-in-out infinite',
           }} />
@@ -145,14 +123,15 @@ function LiveCameraFeed({ camera, latestDetection, onClick }) {
       {/* Camera label */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
-        padding: '16px 8px 6px',
-        fontSize: 10, fontFamily: 'var(--font-mono)', color: '#fff',
+        background: 'linear-gradient(transparent, rgba(15,22,35,0.7))',
+        padding: '20px 10px 8px',
+        fontSize: 11, fontFamily: 'var(--font-mono)', color: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        fontWeight: 600,
       }}>
         <span>{camera.name} · {camera.zone}</span>
         {latestDetection && (
-          <span style={{ color: SEV_COLOR[sev], fontSize: 9 }}>
+          <span style={{ color: '#fff', fontSize: 10, fontWeight: 700 }}>
             {latestDetection.species}
           </span>
         )}
@@ -170,9 +149,7 @@ export default function CameraGrid({ fullPage = false }) {
   const [cols, setCols] = useState(3)
 
   function getLatestDetection(cameraId) {
-    const alert = alerts.find(
-      a => a.detection?.camera_id === cameraId && !a.acknowledged
-    )
+    const alert = alerts.find(a => a.detection?.camera_id === cameraId && !a.acknowledged)
     return alert?.detection ?? null
   }
 
@@ -191,8 +168,8 @@ export default function CameraGrid({ fullPage = false }) {
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(${cols}, 1fr)`,
-      gap: 1,
-      background: 'var(--border)',
+      gap: 12,
+      padding: 16,
     }}>
       {displayed.map(cam => (
         <LiveCameraFeed
@@ -203,45 +180,49 @@ export default function CameraGrid({ fullPage = false }) {
         />
       ))}
       {displayed.length === 0 && (
-        <div style={{ gridColumn: '1/-1', padding: 40, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+        <div style={{ gridColumn: '1/-1', padding: 40, textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
           No cameras with active alerts.
         </div>
       )}
     </div>
   )
 
+  const headerStyle = {
+    padding: '16px 20px', borderBottom: '1px solid var(--border)',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  }
+
+  const btnStyle = (active) => ({
+    fontSize: 13, padding: '6px 14px', borderRadius: 8,
+    border: '1px solid',
+    borderColor: active ? 'var(--accent)' : 'var(--border)',
+    background: active ? 'var(--accent-dim)' : 'transparent',
+    color: active ? 'var(--accent)' : 'var(--muted)',
+    cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500,
+    transition: 'all 0.12s',
+  })
+
   if (fullPage) {
     return (
       <main style={{ overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)' }}>
-            Camera Feeds
-          </h2>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Camera Feeds</h2>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>{cameras.length} cameras monitored</p>
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {[2, 3, 4].map(n => (
-              <button key={n} onClick={() => setCols(n)} style={{
-                fontSize: 11, padding: '4px 10px', borderRadius: 5,
-                border: '1px solid var(--border2)',
-                background: cols === n ? 'var(--accent-dim)' : 'transparent',
-                color: cols === n ? 'var(--accent)' : 'var(--muted)',
-                borderColor: cols === n ? 'var(--accent)' : 'var(--border2)',
-                cursor: 'pointer',
-              }}>{n} Col</button>
+              <button key={n} onClick={() => setCols(n)} style={btnStyle(cols === n)}>{n} Col</button>
             ))}
-            <div style={{ width: 1, background: 'var(--border2)', margin: '0 4px' }} />
+            <div style={{ width: 1, background: 'var(--border)', margin: '0 4px' }} />
             {['all', 'alert'].map(v => (
-              <button key={v} onClick={() => setCameraView(v)} style={{
-                fontSize: 11, padding: '4px 10px', borderRadius: 5,
-                border: '1px solid var(--border2)',
-                background: cameraView === v ? 'var(--accent-dim)' : 'transparent',
-                color: cameraView === v ? 'var(--accent)' : 'var(--muted)',
-                borderColor: cameraView === v ? 'var(--accent)' : 'var(--border2)',
-                cursor: 'pointer',
-              }}>{v === 'all' ? 'All Cams' : 'Alerts Only'}</button>
+              <button key={v} onClick={() => setCameraView(v)} style={btnStyle(cameraView === v)}>
+                {v === 'all' ? 'All Cameras' : 'Alerts Only'}
+              </button>
             ))}
           </div>
         </div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
           {gridContent}
         </div>
       </main>
@@ -252,35 +233,26 @@ export default function CameraGrid({ fullPage = false }) {
     <div style={{
       background: 'var(--surface)',
       border: '1px solid var(--border)',
-      borderRadius: 10,
+      borderRadius: 14,
       overflow: 'hidden',
+      boxShadow: 'var(--shadow)',
     }}>
-      <div style={{
-        padding: '14px 18px',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)' }}>
-          Camera Feeds
-        </span>
+      <div style={headerStyle}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Camera Feeds</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{cameras.length} cameras active</div>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {['all', 'alert'].map(v => (
-            <button key={v} onClick={() => setCameraView(v)} style={{
-              fontSize: 11, padding: '4px 10px', borderRadius: 5,
-              border: '1px solid var(--border2)',
-              background: cameraView === v ? 'var(--accent-dim)' : 'transparent',
-              color: cameraView === v ? 'var(--accent)' : 'var(--muted)',
-              borderColor: cameraView === v ? 'var(--accent)' : 'var(--border2)',
-              cursor: 'pointer', fontFamily: 'var(--font-sans)',
-            }}>
-              {v === 'all' ? 'All Cams' : 'Alerts Only'}
+            <button key={v} onClick={() => setCameraView(v)} style={btnStyle(cameraView === v)}>
+              {v === 'all' ? 'All Cameras' : 'Alerts Only'}
             </button>
           ))}
         </div>
       </div>
       {cameras.length === 0 ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-          <div style={{ fontSize: 24, marginBottom: 12 }}>◫</div>
+        <div style={{ padding: 48, textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>◫</div>
           No cameras configured. Add cameras in Settings.
         </div>
       ) : gridContent}

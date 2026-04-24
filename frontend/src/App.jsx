@@ -26,9 +26,10 @@ function Dashboard() {
       display: 'flex',
       flexDirection: 'column',
       gap: 20,
+      background: 'var(--bg)',
     }}>
       <StatCards />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <CameraGrid />
           <BarChart />
@@ -67,9 +68,10 @@ export default function App() {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '220px 1fr',
-      gridTemplateRows: '56px 1fr',
+      gridTemplateColumns: '232px 1fr',
+      gridTemplateRows: '60px 1fr',
       minHeight: '100vh',
+      background: 'var(--bg)',
     }}>
       <TopBar />
       <Sidebar />

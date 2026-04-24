@@ -4,7 +4,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from 'recharts'
 
-const SEV_COLOR = { critical: '#ff4444', moderate: '#ffaa00', low: '#4488ff' }
+const SEV_COLOR = { critical: 'var(--critical)', moderate: 'var(--moderate)', low: 'var(--low)' }
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
     if (s) speciesCounts[s] = (speciesCounts[s] || 0) + 1
   })
   const pieData = Object.entries(speciesCounts).map(([name, value]) => ({ name, value }))
-  const PIE_COLORS = ['#ff4444', '#ffaa00', '#4488ff', '#00e5a0', '#a855f7', '#ec4899']
+  const PIE_COLORS = ['var(--critical)', 'var(--moderate)', 'var(--low)', '#00e5a0', '#a855f7', '#ec4899']
 
   // Severity breakdown
   const sevCounts = {
@@ -101,13 +101,13 @@ export default function AnalyticsPage() {
             ) : (
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={hourlyData} barSize={5} barGap={1}>
-                  <XAxis dataKey="hour" tick={{ fontSize: 9, fill: '#6b7380', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} interval={2} />
+                  <XAxis dataKey="hour" tick={{ fontSize: 9, fill: 'var(--muted)', fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} interval={2} />
                   <YAxis hide />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                  <Bar dataKey="snake" fill="#ff4444" radius={[2,2,0,0]} name="Snake" stackId="a" />
-                  <Bar dataKey="cat"   fill="#ffaa00" radius={[2,2,0,0]} name="Cat"   stackId="a" />
-                  <Bar dataKey="pest"  fill="#4488ff" radius={[2,2,0,0]} name="Pest"  stackId="a" />
-                  <Bar dataKey="other" fill="#6b7380" radius={[2,2,0,0]} name="Other" stackId="a" />
+                  <Bar dataKey="snake" fill="var(--critical)" radius={[2,2,0,0]} name="Snake" stackId="a" />
+                  <Bar dataKey="cat"   fill="var(--moderate)" radius={[2,2,0,0]} name="Cat"   stackId="a" />
+                  <Bar dataKey="pest"  fill="var(--low)" radius={[2,2,0,0]} name="Pest"  stackId="a" />
+                  <Bar dataKey="other" fill="var(--muted)" radius={[2,2,0,0]} name="Other" stackId="a" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -147,7 +147,7 @@ export default function AnalyticsPage() {
           ) : (
             <ResponsiveContainer width="100%" height={100}>
               <LineChart data={trendData}>
-                <XAxis dataKey="hour" tick={{ fontSize: 9, fill: '#6b7380', fontFamily: 'Space Mono' }} axisLine={false} tickLine={false} interval={2} />
+                <XAxis dataKey="hour" tick={{ fontSize: 9, fill: 'var(--muted)', fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} interval={2} />
                 <YAxis hide />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)' }} />
                 <Line type="monotone" dataKey="cumulative" stroke="var(--accent)" strokeWidth={2} dot={false} name="Cumulative" />

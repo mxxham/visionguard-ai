@@ -1,23 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg: #0a0c0f;
-  --surface: #111318;
-  --surface2: #181c22;
-  --border: #22272f;
-  --border2: #2d3440;
-  --text: #e8ecf0;
-  --muted: #6b7380;
-  --accent: #00e5a0;
-  --accent-dim: rgba(0,229,160,0.12);
-  --critical: #ff4444;
-  --critical-dim: rgba(255,68,68,0.12);
-  --moderate: #ffaa00;
-  --moderate-dim: rgba(255,170,0,0.12);
-  --low: #4488ff;
-  --low-dim: rgba(68,136,255,0.12);
-  --font-mono: 'Space Mono', monospace;
-  --font-sans: 'DM Sans', sans-serif;
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface2: #f0f2f8;
+  --surface3: #e8ebf4;
+  --border: #e2e6f0;
+  --border2: #d0d5e8;
+  --text: #0f1623;
+  --text2: #2d3752;
+  --muted: #6b7592;
+  --accent: #2563eb;
+  --accent-light: rgba(37,99,235,0.08);
+  --accent-dim: rgba(37,99,235,0.12);
+  --critical: #dc2626;
+  --critical-dim: rgba(220,38,38,0.10);
+  --moderate: #d97706;
+  --moderate-dim: rgba(217,119,6,0.10);
+  --low: #2563eb;
+  --low-dim: rgba(37,99,235,0.10);
+  --green: #059669;
+  --green-dim: rgba(5,150,105,0.10);
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(15,22,35,0.06), 0 4px 12px rgba(15,22,35,0.04);
+  --shadow-md: 0 2px 8px rgba(15,22,35,0.08), 0 12px 32px rgba(15,22,35,0.06);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,26 +34,18 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 15px;
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: 9999; pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg, transparent, transparent 2px,
-    rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px
-  );
-}
-
-::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
-@keyframes slide-in { from { transform: translateY(-16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+@keyframes slide-in { from { transform: translateY(-12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes cam-alert { 0%,100%{outline:2px solid var(--critical)} 50%{outline:2px solid transparent} }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes spin { to { transform: rotate(360deg); } }

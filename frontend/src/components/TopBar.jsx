@@ -22,45 +22,66 @@ export default function TopBar() {
       borderBottom: '1px solid var(--border)',
       display: 'flex',
       alignItems: 'center',
-      padding: '0 24px',
+      padding: '0 28px',
       gap: 16,
-      height: 56,
+      height: 60,
+      boxShadow: '0 1px 0 var(--border)',
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{
-          width: 28, height: 28,
-          border: '1.5px solid var(--accent)',
-          borderRadius: 6,
+          width: 34, height: 34,
+          background: 'var(--accent)',
+          borderRadius: 9,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          position: 'relative',
           fontFamily: 'var(--font-mono)',
-          fontSize: 10, color: 'var(--accent)',
+          fontSize: 15, color: '#fff',
+          fontWeight: 600,
+          boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
         }}>
-          <span style={{ position: 'relative', zIndex: 1 }}>⬡</span>
+          ⬡
         </div>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--accent)', letterSpacing: '0.08em' }}>
-          VISIONGUARD AI
+        <span style={{
+          fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text)',
+          letterSpacing: '0.06em', fontWeight: 600,
+        }}>
+          VISIONGUARD <span style={{ color: 'var(--accent)' }}>AI</span>
         </span>
       </div>
 
-      <span style={{ color: 'var(--muted)', fontSize: 12, marginLeft: 8 }}>
+      <div style={{
+        width: 1, height: 24, background: 'var(--border)', marginLeft: 4,
+      }} />
+
+      <span style={{ color: 'var(--muted)', fontSize: 14, fontWeight: 500 }}>
         Warehouse Bio-Hazard Detection System
       </span>
 
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 20 }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 24 }}>
         {/* WS status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          background: wsConnected ? 'var(--green-dim, rgba(5,150,105,0.08))' : 'var(--critical-dim)',
+          padding: '5px 12px', borderRadius: 20,
+          border: `1px solid ${wsConnected ? 'rgba(5,150,105,0.2)' : 'rgba(220,38,38,0.2)'}`,
+        }}>
           <div style={{
             width: 7, height: 7, borderRadius: '50%',
-            background: wsConnected ? 'var(--accent)' : 'var(--critical)',
+            background: wsConnected ? '#059669' : 'var(--critical)',
             animation: wsConnected ? 'pulse 2s ease-in-out infinite' : 'none',
           }} />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: wsConnected ? 'var(--accent)' : 'var(--critical)', letterSpacing: '0.1em' }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: 12,
+            color: wsConnected ? '#059669' : 'var(--critical)',
+            fontWeight: 600, letterSpacing: '0.08em',
+          }}>
             {wsConnected ? 'LIVE' : 'RECONNECTING'}
           </span>
         </div>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)', fontSize: 13,
+          color: 'var(--text2)', fontWeight: 500,
+        }}>
           {time}
         </span>
       </div>
