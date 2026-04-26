@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 
-export default function TopBar() {
+export default function TopBar({ user, onLogout }) {
   const [time, setTime] = useState('')
   const wsConnected = useStore(s => s.wsConnected)
 
@@ -49,19 +49,17 @@ export default function TopBar() {
         </span>
       </div>
 
-      <div style={{
-        width: 1, height: 24, background: 'var(--border)', marginLeft: 4,
-      }} />
+      <div style={{ width: 1, height: 24, background: 'var(--border)', marginLeft: 4 }} />
 
       <span style={{ color: 'var(--muted)', fontSize: 14, fontWeight: 500 }}>
         Warehouse Bio-Hazard Detection System
       </span>
 
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 24 }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
         {/* WS status */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 7,
-          background: wsConnected ? 'var(--green-dim, rgba(5,150,105,0.08))' : 'var(--critical-dim)',
+          background: wsConnected ? 'rgba(5,150,105,0.08)' : 'var(--critical-dim)',
           padding: '5px 12px', borderRadius: 20,
           border: `1px solid ${wsConnected ? 'rgba(5,150,105,0.2)' : 'rgba(220,38,38,0.2)'}`,
         }}>
@@ -78,12 +76,57 @@ export default function TopBar() {
             {wsConnected ? 'LIVE' : 'RECONNECTING'}
           </span>
         </div>
-        <span style={{
-          fontFamily: 'var(--font-mono)', fontSize: 13,
-          color: 'var(--text2)', fontWeight: 500,
-        }}>
+
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text2)', fontWeight: 500 }}>
           {time}
         </span>
+
+        {/* User pill + logout */}
+        {user && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 20, padding: '5px 14px',
+            }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%',
+                background: user.role === 'admin' ? 'var(--accent)' : '#059669',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, color: '#fff', fontWeight: 700,
+              }}>
+                {user.full_name?.[0]?.toUpperCase() ?? '?'}
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                {user.full_name}
+              </span>
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                color: user.role === 'admin' ? 'var(--accent)' : '#059669',
+                background: user.role === 'admin' ? 'var(--accent-dim)' : 'rgba(5,150,105,0.1)',
+                padding: '2px 7px', borderRadius: 5,
+                textTransform: 'uppercase', letterSpacing: '0.05em',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                {user.role}
+              </span>
+            </div>
+            <button
+              onClick={onLogout}
+              style={{
+                padding: '6px 14px', fontSize: 13, fontWeight: 600,
+                background: 'transparent', color: 'var(--muted)',
+                border: '1px solid var(--border)', borderRadius: 8,
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                transition: 'all 0.12s',
+              }}
+              onMouseEnter={e => { e.target.style.color = 'var(--critical)'; e.target.style.borderColor = 'rgba(220,38,38,0.3)' }}
+              onMouseLeave={e => { e.target.style.color = 'var(--muted)'; e.target.style.borderColor = 'var(--border)' }}
+            >
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
     </header>
   )

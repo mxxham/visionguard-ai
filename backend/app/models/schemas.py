@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel
-from app.db.models import SeverityEnum, CameraStatusEnum
+from pydantic import BaseModel, EmailStr
+from app.db.models import SeverityEnum, CameraStatusEnum, UserRole
 
 
 # ── Camera ────────────────────────────────────────────────────────────────────
@@ -137,3 +137,38 @@ class WSStatsEvent(BaseModel):
     event: str = "stats_update"
     stats: StatsSummary
     timestamp: str
+
+
+# ── Auth / User ───────────────────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    email: str
+    full_name: str
+    role: UserRole
+    is_active: bool
+    created_at: datetime
+    last_login: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+
+
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str
+    password: str
+    role: UserRole = UserRole.user

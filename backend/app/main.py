@@ -9,6 +9,7 @@ from app.db.database import engine
 from app.db import models
 from app.db.seed import seed
 from app.routers import cameras, alerts, stats, ws
+from app.routers import auth                          # NEW
 from app.ml.camera_manager import camera_manager
 
 logging.basicConfig(
@@ -24,7 +25,7 @@ async def lifespan(app: FastAPI):
     logger.info("Creating database tables…")
     models.Base.metadata.create_all(bind=engine)
 
-    logger.info("Seeding initial cameras…")
+    logger.info("Seeding initial data…")
     seed()
 
     logger.info("Starting camera workers…")
@@ -44,14 +45,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS – allow Vite dev server
+# CORS – allow Vite dev server and Docker frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000",  "http://frontend:80",  ], 
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://frontend:80"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    
 )
 
 # Routers
@@ -59,6 +59,7 @@ app.include_router(cameras.router)
 app.include_router(alerts.router)
 app.include_router(stats.router)
 app.include_router(ws.router)
+app.include_router(auth.router)                       # NEW
 
 # Serve snapshot images
 import os
