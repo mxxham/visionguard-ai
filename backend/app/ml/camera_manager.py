@@ -3,11 +3,16 @@ Camera manager: spawns one async task per active camera.
 Each task reads frames (RTSP or webcam), runs YOLOv8 inference,
 deduplicates, saves detections + alerts to PostgreSQL,
 and broadcasts events over WebSocket.
+
+Demo mode: when no video source is configured, a synthetic warehouse
+frame is generated using OpenCV drawing primitives so every camera
+shows a live-looking feed even on hardware-restricted environments.
 """
 import asyncio
 import logging
 import time
 import uuid
+import random
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
@@ -19,12 +24,24 @@ from app.config import settings
 from app.db.database import SessionLocal
 from app.db.models import Detection, Alert, Camera, CameraStatusEnum
 from app.ml.detector import get_detector
+from app.ml.demo_frame import generate_demo_frame
 from app.websocket.manager import ws_manager
 
 logger = logging.getLogger(__name__)
 
 SNAPSHOT_DIR = Path("snapshots")
 SNAPSHOT_DIR.mkdir(exist_ok=True)
+
+# How often (seconds) to run a simulated detection in demo mode
+_DEMO_DETECTION_INTERVAL = 45   # one detection every ~45s per camera
+_DEMO_SPECIES_POOL = [
+    ("Gecko",      "gecko",      "low"),
+    ("Rat",        "rat",        "moderate"),
+    ("Stray Cat",  "cat",        "moderate"),
+    ("Snake",      "snake",      "critical"),
+    ("Bird",       "bird",       "low"),
+    ("Cockroach",  "cockroach",  "moderate"),
+]
 
 
 class CameraWorker:
@@ -38,6 +55,12 @@ class CameraWorker:
         self.running = False
         self._task: Optional[asyncio.Task] = None
         self._last_detected: Dict[str, float] = {}
+        # Demo state
+        self._demo_rng = random.Random(camera_id * 7919)
+        self._demo_next_detection = time.time() + self._demo_rng.uniform(5, _DEMO_DETECTION_INTERVAL)
+        self._demo_active_bbox: Optional[list] = None
+        self._demo_active_label: str = ""
+        self._demo_detection_end: float = 0
 
     def _is_duplicate(self, species: str) -> bool:
         now = time.time()
@@ -47,13 +70,122 @@ class CameraWorker:
         self._last_detected[species] = now
         return False
 
-    async def _run(self):
-        # No source configured at all
-        if self.source is None:
-            logger.warning(f"Camera {self.camera_name} has no source configured, skipping.")
-            await self._set_status(CameraStatusEnum.error)
-            return
+    # ── Demo (synthetic) run loop ─────────────────────────────────────────────
 
+    async def _run_demo(self):
+        """Generate synthetic warehouse frames and occasional fake detections."""
+        logger.info(f"Camera {self.camera_name}: no source configured, running in DEMO mode")
+        await self._set_status(CameraStatusEnum.online)
+        await ws_manager.broadcast_camera_status(self.camera_id, self.camera_name, "online")
+
+        detector = get_detector(settings.model_path, settings.confidence_threshold)
+        frame_interval = 1.0 / 5   # 5 fps — lightweight
+        loop = asyncio.get_event_loop()
+
+        seed = self.camera_id   # each camera gets a unique shelf layout
+
+        while self.running:
+            t0 = time.monotonic()
+            now = time.time()
+
+            # Manage active bounding-box display window (show for 8s)
+            if self._demo_active_bbox and now > self._demo_detection_end:
+                self._demo_active_bbox = None
+                self._demo_active_label = ""
+
+            # Trigger a new synthetic detection?
+            if now >= self._demo_next_detection:
+                species_name, raw_cls, severity = self._demo_rng.choice(_DEMO_SPECIES_POOL)
+                confidence = round(self._demo_rng.uniform(0.52, 0.97), 2)
+                bx = self._demo_rng.randint(80, 380)
+                by = self._demo_rng.randint(70, 200)
+                bw = self._demo_rng.randint(40, 90)
+                bh = self._demo_rng.randint(40, 100)
+                bbox = [bx, by, bw, bh]
+                label = f"{raw_cls.upper()} {confidence:.2f}"
+
+                # Show bbox on frame for 8 seconds
+                self._demo_active_bbox = bbox
+                self._demo_active_label = label
+                self._demo_detection_end = now + 8
+
+                # Build a frame to snapshot
+                frame = generate_demo_frame(
+                    cam_name=self.camera_name,
+                    zone=self.zone,
+                    detection_bbox=bbox,
+                    detection_label=label,
+                    seed=seed,
+                )
+
+                det = {
+                    "species":     species_name,
+                    "label":       label,
+                    "label_group": raw_cls.upper(),
+                    "raw_class":   raw_cls,
+                    "confidence":  confidence,
+                    "severity":    severity,
+                    "bbox":        bbox,
+                }
+                is_dup = self._is_duplicate(species_name)
+                snapshot_path = await loop.run_in_executor(
+                    None, self._save_snapshot, frame, bbox
+                )
+                alert_id, detection_id = await loop.run_in_executor(
+                    None, self._persist, det, snapshot_path, is_dup
+                )
+                if not is_dup:
+                    await ws_manager.broadcast_detection({
+                        "alert_id":    alert_id,
+                        "detection_id": detection_id,
+                        "camera_id":   self.camera_id,
+                        "camera_name": self.camera_name,
+                        "camera_zone": self.zone,
+                        "species":     species_name,
+                        "label":       label,
+                        "confidence":  confidence,
+                        "severity":    severity,
+                        "bbox":        bbox,
+                        "frame_path":  snapshot_path,
+                        "timestamp":   datetime.utcnow().isoformat(),
+                    })
+
+                # Schedule next detection
+                self._demo_next_detection = now + self._demo_rng.uniform(
+                    _DEMO_DETECTION_INTERVAL * 0.6,
+                    _DEMO_DETECTION_INTERVAL * 1.4,
+                )
+            else:
+                # Just render an idle frame (no detection overhead)
+                frame = generate_demo_frame(
+                    cam_name=self.camera_name,
+                    zone=self.zone,
+                    detection_bbox=self._demo_active_bbox,
+                    detection_label=self._demo_active_label,
+                    seed=seed,
+                )
+
+            # Save latest frame as the camera's "current" snapshot
+            await loop.run_in_executor(None, self._save_live_frame, frame)
+
+            elapsed = time.monotonic() - t0
+            await asyncio.sleep(max(0, frame_interval - elapsed))
+
+        await self._set_status(CameraStatusEnum.offline)
+        await ws_manager.broadcast_camera_status(self.camera_id, self.camera_name, "offline")
+        logger.info(f"Camera {self.camera_name} (demo) stopped")
+
+    def _save_live_frame(self, frame: np.ndarray):
+        """Overwrite a stable per-camera live snapshot so the UI can poll it."""
+        try:
+            path = SNAPSHOT_DIR / f"live_cam_{self.camera_id}.jpg"
+            cv2.imwrite(str(path), frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+        except Exception as e:
+            logger.error(f"Live frame save error: {e}")
+
+    # ── Real camera run loop ──────────────────────────────────────────────────
+
+    async def _run_real(self):
         detector = get_detector(settings.model_path, settings.confidence_threshold)
         frame_interval = 1.0 / 5
         loop = asyncio.get_event_loop()
@@ -66,12 +198,10 @@ class CameraWorker:
                 await self._set_status(CameraStatusEnum.error)
                 await ws_manager.broadcast_camera_status(self.camera_id, self.camera_name, "error")
 
-                # Device/webcam sources: no hardware present, stop retrying permanently
                 if not self.is_file_source:
                     logger.warning(f"{self.camera_name}: device source unavailable, stopping retries.")
                     return
 
-                # File/RTSP: retry every 10s
                 await asyncio.sleep(10)
                 continue
 
@@ -94,6 +224,12 @@ class CameraWorker:
 
                     detections = await loop.run_in_executor(None, detector.predict, frame)
 
+                    # Save live thumbnail every 2s so the UI can poll it
+                    now_t = time.time()
+                    if not hasattr(self, '_last_live_save') or now_t - self._last_live_save >= 2.0:
+                        await loop.run_in_executor(None, self._save_live_frame, frame)
+                        self._last_live_save = now_t
+
                     for det in detections:
                         is_dup = self._is_duplicate(det["species"])
                         snapshot_path = await loop.run_in_executor(
@@ -104,18 +240,18 @@ class CameraWorker:
                         )
                         if not is_dup:
                             await ws_manager.broadcast_detection({
-                                "alert_id": alert_id,
+                                "alert_id":    alert_id,
                                 "detection_id": detection_id,
-                                "camera_id": self.camera_id,
+                                "camera_id":   self.camera_id,
                                 "camera_name": self.camera_name,
                                 "camera_zone": self.zone,
-                                "species": det["species"],
-                                "label": det["label"],
-                                "confidence": det["confidence"],
-                                "severity": det["severity"],
-                                "bbox": det["bbox"],
-                                "frame_path": snapshot_path,
-                                "timestamp": datetime.utcnow().isoformat(),
+                                "species":     det["species"],
+                                "label":       det["label"],
+                                "confidence":  det["confidence"],
+                                "severity":    det["severity"],
+                                "bbox":        det["bbox"],
+                                "frame_path":  snapshot_path,
+                                "timestamp":   datetime.utcnow().isoformat(),
                             })
 
                     elapsed = time.monotonic() - t0
@@ -130,6 +266,16 @@ class CameraWorker:
         await self._set_status(CameraStatusEnum.offline)
         await ws_manager.broadcast_camera_status(self.camera_id, self.camera_name, "offline")
         logger.info(f"Camera {self.camera_name} stopped")
+
+    # ── Dispatcher ───────────────────────────────────────────────────────────
+
+    async def _run(self):
+        if self.source is None:
+            await self._run_demo()
+        else:
+            await self._run_real()
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _save_snapshot(self, frame: np.ndarray, bbox: list) -> str:
         try:

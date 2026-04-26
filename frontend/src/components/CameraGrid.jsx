@@ -2,6 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
 import { getCameras } from '../api/client'
 
+function CameraCardSkeleton() {
+  return (
+    <div style={{ borderRadius: 8, overflow: 'hidden', border: '2px solid var(--border)', aspectRatio: '16/9', position: 'relative', background: 'var(--surface2)' }}>
+      <div className="shimmer" style={{ position: 'absolute', inset: 0 }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px 10px' }}>
+        <div className="shimmer" style={{ height: 10, width: '60%', borderRadius: 5 }} />
+      </div>
+      <div className="shimmer" style={{ position: 'absolute', top: 7, right: 7, height: 18, width: 36, borderRadius: 5 }} />
+    </div>
+  )
+}
+
 const SEV_COLOR = {
   critical: 'var(--critical)',
   moderate: 'var(--moderate)',
@@ -16,17 +28,36 @@ function LiveCameraFeed({ camera, latestDetection, onClick }) {
   const sev = latestDetection?.severity
 
   useEffect(() => {
-    function fetchLatestFrame() {
-      if (latestDetection?.frame_path) {
-        const filename = latestDetection.frame_path.split('/').pop()
-        setImgSrc(`/snapshots/${filename}?t=${Date.now()}`)
-        setImgError(false)
+    // Use a hidden Image object to preload the next frame before swapping src.
+    // This eliminates the blank-flash glitch caused by directly mutating imgSrc.
+    let cancelled = false
+
+    function loadNextFrame() {
+      const url = latestDetection?.frame_path
+        ? `/snapshots/${latestDetection.frame_path.split('/').pop()}?t=${Date.now()}`
+        : `/snapshots/live_cam_${camera.id}.jpg?t=${Date.now()}`
+
+      const img = new Image()
+      img.onload = () => {
+        if (!cancelled) {
+          setImgSrc(url)
+          setImgError(false)
+        }
       }
+      img.onerror = () => {
+        if (!cancelled) setImgError(true)
+      }
+      img.src = url
     }
-    fetchLatestFrame()
-    intervalRef.current = setInterval(fetchLatestFrame, 3000)
-    return () => clearInterval(intervalRef.current)
-  }, [latestDetection?.frame_path])
+
+    loadNextFrame()
+    // 1fps is plenty for warehouse surveillance — no flicker, low bandwidth
+    intervalRef.current = setInterval(loadNextFrame, 1000)
+    return () => {
+      cancelled = true
+      clearInterval(intervalRef.current)
+    }
+  }, [latestDetection?.frame_path, camera.id])
 
   const isOnline  = camera.status === 'online'
   const isOffline = camera.status === 'offline'
@@ -60,23 +91,25 @@ function LiveCameraFeed({ camera, latestDetection, onClick }) {
           style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
         />
       ) : (
-        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-          viewBox="0 0 160 90" xmlns="http://www.w3.org/2000/svg">
-          <rect width="160" height="90" fill="#f1f4fb" />
-          <rect x="0" y="28" width="160" height="2" fill="#e2e6f0" />
-          <rect x="0" y="58" width="160" height="2" fill="#e2e6f0" />
-          <rect x="10" y="30" width="12" height="28" fill="#e8ebf4" rx="2" />
-          <rect x="30" y="30" width="18" height="28" fill="#e8ebf4" rx="2" />
-          <rect x="56" y="30" width="14" height="28" fill="#e8ebf4" rx="2" />
-          <rect x="78" y="30" width="22" height="28" fill="#e8ebf4" rx="2" />
-          <rect x="110" y="30" width="16" height="28" fill="#e8ebf4" rx="2" />
-          <rect x="134" y="30" width="18" height="28" fill="#e8ebf4" rx="2" />
-          {isOnline && !hasAlert && (
-            <text x="80" y="80" textAnchor="middle" fill="#94a3b8" fontSize="7" fontFamily="IBM Plex Mono">
-              {isError ? 'NO SIGNAL' : 'AWAITING DETECTION'}
-            </text>
-          )}
-        </svg>
+        <div style={{ position: 'absolute', inset: 0, background: '#0a0f18', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          {/* Dark CCTV placeholder */}
+          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.6 }} viewBox="0 0 160 90" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="62" width="160" height="28" fill="#0d1520" />
+            <rect x="6"   y="24" width="22" height="38" fill="#141e2e" rx="1" />
+            <rect x="35"  y="18" width="26" height="44" fill="#141e2e" rx="1" />
+            <rect x="68"  y="22" width="24" height="40" fill="#141e2e" rx="1" />
+            <rect x="99"  y="20" width="28" height="42" fill="#141e2e" rx="1" />
+            <rect x="134" y="25" width="20" height="37" fill="#141e2e" rx="1" />
+          </svg>
+          <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: isError ? '#dc2626' : '#334155', fontWeight: 700, marginBottom: 4 }}>
+              {isError ? '● NO SIGNAL' : isOffline ? '● OFFLINE' : '● BUFFERING…'}
+            </div>
+            <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#1e3a5f' }}>
+              {camera.name}
+            </div>
+          </div>
+        </div>
       )}
 
       {latestDetection && (
@@ -164,7 +197,13 @@ export default function CameraGrid({ fullPage = false }) {
     if (alert) setSelectedAlert(alert)
   }
 
-  const gridContent = (
+  const camerasLoading = useStore(s => s.camerasLoading)
+
+  const gridContent = camerasLoading && cameras.length === 0 ? (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12, padding: 16 }}>
+      {Array.from({ length: cols * 2 }).map((_, i) => <CameraCardSkeleton key={i} />)}
+    </div>
+  ) : (
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(${cols}, 1fr)`,
